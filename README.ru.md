@@ -1,8 +1,14 @@
 # Sota Gateway
 
+[![Сборка OpenWrt и регрессионные тесты](https://github.com/s3xys4s/sotavpn-owrt-luci/actions/workflows/openwrt-release.yml/badge.svg?branch=master)](https://github.com/s3xys4s/sotavpn-owrt-luci/actions/workflows/openwrt-release.yml)
+[![Последний релиз](https://img.shields.io/github/v/release/s3xys4s/sotavpn-owrt-luci)](https://github.com/s3xys4s/sotavpn-owrt-luci/releases/latest)
+[![OpenWrt ARM64](https://img.shields.io/badge/OpenWrt-ARM64-00B5E2?logo=openwrt&logoColor=white)](#сборка-пакетов-openwrt)
+
 [English](README.md) · [Инструкции для ИИ-агентов](AGENTS.md)
 
 Sota Gateway подключает ARM64-роутер с OpenWrt к VPN Sota Connect. Устройства в локальной сети используют роутер как шлюз. В LuCI можно выбрать сервер и протокол, направить отдельные IPv4-сети и домены через VPN или WAN и сравнить внешние IP обоих соединений.
+
+Sota Gateway — **проект, сгенерированный ИИ** с помощью OpenAI Codex. Шлюз использует оригинальное VPN-ядро `kittend` из Sota Connect.
 
 - **Подключение.** «Авто» использует транспорт из профиля провайдера. VLESS и Hysteria2 можно выбрать вручную. «Старт» запоминает подключение для следующих загрузок. «Стоп» возвращает обычную маршрутизацию и DNS и сохраняет это состояние после перезагрузки. «Перезапуск» переподключает выбранный сервер. Службой управляет `procd`.
 - **Маршрутизация и DNS.** Принимаются IPv4, CIDR, точные домены и wildcard по одному на строку. Можно объединять ручные правила, загруженные TXT и списки по HTTP(S) с автообновлением. Исключения имеют приоритет и идут через WAN. Доступны обычный DNS и DNS over HTTPS с bootstrap-резолвером. Доменные правила используют IPv4 из ответов DNS шлюза. Активная политика блокирует пересылку IPv6 на выбранном LAN-интерфейсе.

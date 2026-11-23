@@ -1,8 +1,14 @@
 # Sota Gateway
 
+[![OpenWrt build and regression tests](https://github.com/s3xys4s/sotavpn-owrt-luci/actions/workflows/openwrt-release.yml/badge.svg?branch=master)](https://github.com/s3xys4s/sotavpn-owrt-luci/actions/workflows/openwrt-release.yml)
+[![Latest release](https://img.shields.io/github/v/release/s3xys4s/sotavpn-owrt-luci)](https://github.com/s3xys4s/sotavpn-owrt-luci/releases/latest)
+[![OpenWrt ARM64](https://img.shields.io/badge/OpenWrt-ARM64-00B5E2?logo=openwrt&logoColor=white)](#build-the-openwrt-packages)
+
 [Русский](README.ru.md) · [Agent guide](AGENTS.md)
 
 Sota Gateway runs a Sota Connect VPN on an ARM64 OpenWrt router. Devices on the LAN use the router as their gateway. LuCI lets you choose a server and transport, route selected IPv4 networks and domains through VPN or WAN, and compare the public IP of each path.
+
+Sota Gateway is an **AI-generated project** built with OpenAI Codex around Sota Connect’s original `kittend` VPN engine.
 
 - **Connection.** Auto follows the provider profile. VLESS and Hysteria2 select a transport explicitly. Start remembers the connection across reboots. Stop restores normal routing and DNS and persists across reboots. Restart reconnects the selected server. OpenWrt's `procd` supervises the service.
 - **Routing and DNS.** Enter one IPv4/CIDR, exact domain or wildcard per line. Combine manual rules, uploaded TXT files and periodically refreshed HTTP(S) lists. Exceptions take priority and go through WAN. Set a DNS resolver or a DNS over HTTPS endpoint with bootstrap DNS. Domain rules use IPv4 answers from the gateway's resolver. The active policy blocks IPv6 forwarding on the selected LAN interface.
