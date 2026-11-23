@@ -2,7 +2,9 @@ name: OpenWrt packages
 
 on:
   push:
+    branches: [master]
     tags: ['**']
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -39,7 +41,10 @@ jobs:
 
       - name: Build ARM64 controller and verify the upstream engine
         run: |
-          python3 tools/candidate.py v1.8.11 '1.8.11+1892' arm64 build/arm64
+          url=https://github.com/sotavpn/sotavpn-app/releases/download/v1.8.11/sotaconnect_arm64.deb
+          curl --fail --location --retry 3 "$url" -o "$RUNNER_TEMP/sota.deb"
+          python3 tools/extract.py "$RUNNER_TEMP/sota.deb" build/arm64 --source "$url" \
+            --sha256 44ec209c690ed718879486341529dd89e01b3783790b306c2b5cfe7681ecedbd --version '1.8.11+1892' --arch arm64
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags=luci_only -trimpath \
             -ldflags='-s -w' -o build/openwrt-controller-arm64 ./cmd/panel
 
@@ -53,17 +58,19 @@ jobs:
           sdk=$(sh tools/prepare_filogic_sdk.sh 25.12.6 "$RUNNER_TEMP/openwrt")
           echo "APK_SDK=$sdk" >> "$GITHUB_ENV"
 
-      - name: Build and verify signed APKs for OpenWrt 25.12.6
+      - name: Load the release signing key
+        if: github.event_name != 'pull_request' && (github.ref_type == 'tag' || github.ref == 'refs/heads/master')
         env:
           SOTA_APK_SIGNING_KEY: ${{ secrets.SOTA_APK_SIGNING_KEY }}
         run: |
           : "${SOTA_APK_SIGNING_KEY:?Set the SOTA_APK_SIGNING_KEY repository secret}"
           umask 077
-          trap 'rm -f "$APK_SDK/private-key.pem"' EXIT
           printf '%s\n' "$SOTA_APK_SIGNING_KEY" > "$APK_SDK/private-key.pem"
           unset SOTA_APK_SIGNING_KEY
           openssl pkey -in "$APK_SDK/private-key.pem" -pubout -out "$APK_SDK/public-key.pem"
-          umask 022
+      - name: Build and verify signed APKs for OpenWrt 25.12.6
+        run: |
+          trap 'rm -f "$APK_SDK/private-key.pem"' EXIT
           sh tools/build_openwrt.sh "$APK_SDK" build/candidate-filogic-25.12.6
 
       - name: Package and verify install bundles
@@ -85,8 +92,34 @@ jobs:
           path: dist/
           if-no-files-found: error
 
-  publish:
+  regression:
+    name: Regression / OpenWrt ${{ matrix.openwrt }}
     needs: build
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        openwrt: ['24.10.8', '25.12.6']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: openwrt-release
+          path: dist
+      - name: Install host test tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends squashfs-tools nftables iproute2
+      - name: Exercise the installed packages on the Routerich filesystem
+        env:
+          OPENWRT: ${{ matrix.openwrt }}
+        run: sudo bash tools/ci/test-openwrt-packages.sh "$OPENWRT" dist
+
+  publish:
+    needs: [build, regression]
     if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
