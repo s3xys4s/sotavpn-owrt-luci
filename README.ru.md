@@ -1,0 +1,86 @@
+# Sota Gateway
+
+[English](README.md) · [Инструкции для ИИ-агентов](AGENTS.md)
+
+Sota Gateway подключает ARM64-роутер с OpenWrt к VPN Sota Connect. Устройства в локальной сети используют роутер как шлюз. В LuCI можно выбрать сервер и протокол, направить отдельные IPv4-сети и домены через VPN или WAN и сравнить внешние IP обоих соединений.
+
+- **Подключение.** «Авто» использует транспорт из профиля провайдера. VLESS и Hysteria2 можно выбрать вручную. «Старт» запоминает подключение для следующих загрузок. «Стоп» возвращает обычную маршрутизацию и DNS и сохраняет это состояние после перезагрузки. «Перезапуск» переподключает выбранный сервер. Службой управляет `procd`.
+- **Маршрутизация и DNS.** Принимаются IPv4, CIDR, точные домены и wildcard по одному на строку. Можно объединять ручные правила, загруженные TXT и списки по HTTP(S) с автообновлением. Исключения имеют приоритет и идут через WAN. Доступны обычный DNS и DNS over HTTPS с bootstrap-резолвером. Доменные правила используют IPv4 из ответов DNS шлюза. Активная политика блокирует пересылку IPv6 на выбранном LAN-интерфейсе.
+- **Управление.** В LuCI есть проверка внешнего IP, журнал и справочное поле HWID. Язык определяется настройками OpenWrt. На роутере управление доступно только через LuCI. В репозитории также есть отдельная HTTP-панель с переключателем языка для доверенного Linux-стенда.
+
+## Сборка пакетов OpenWrt
+
+Команды ниже собирают шлюз и приложение LuCI для **Routerich AX3000**, платформа `mediatek/filogic`, архитектура `aarch64_cortex-a53`. Выберите версию из раздела **Статус → Обзор** на роутере. Для 24.10.8 получатся IPK, для 25.12.6 — подписанные APK и открытый ключ. [SDK для 24.10.8](https://downloads.openwrt.org/releases/24.10.8/targets/mediatek/filogic/) · [SDK для 25.12.6](https://downloads.openwrt.org/releases/25.12.6/targets/mediatek/filogic/)
+
+Нужны Linux x86-64 или WSL2, файловая система Linux с учётом регистра, Go 1.23 или новее и Python 3.9 или новее. Установите инструменты, необходимые SDK. Ниже пример для Debian/Ubuntu. Команды сборки выполняйте из корня репозитория от обычного пользователя.
+
+```sh
+sudo apt-get update
+sudo apt-get install build-essential clang flex bison g++ gawk gettext git libncurses-dev libssl-dev python3 python3-setuptools rsync unzip zlib1g-dev file curl ca-certificates openssl tar zstd xz-utils perl time
+go version
+```
+
+**1. Получите ядро VPN.** В этом проекте разрабатываются контроллер, интерфейсы, маршрутизация, упаковка и тесты. Оригинальный движок `kittend` поставляется бинарным файлом в Sota Connect. Сценарий сверяет хеш пакета с официальным релизом, проверяет версию, архитектуру и совместимость IPC и извлекает движок в новый каталог `build/arm64`. Ключ подписки для сборки не нужен. [Релиз Sota Connect v1.8.11](https://github.com/sotavpn/sotavpn-app/releases/tag/v1.8.11)
+
+```sh
+python3 tools/candidate.py v1.8.11 '1.8.11+1892' arm64 build/arm64
+```
+
+Если официальный ARM64 DEB уже скачан, вместо первого шага выполните команду ниже. Она проверит зафиксированный SHA-256 пакета и распакует его без обращения к сети.
+
+```sh
+python3 tools/extract.py /path/to/sotaconnect_arm64.deb build/arm64 \
+  --source https://github.com/sotavpn/sotavpn-app/releases/download/v1.8.11/sotaconnect_arm64.deb \
+  --sha256 44ec209c690ed718879486341529dd89e01b3783790b306c2b5cfe7681ecedbd \
+  --version '1.8.11+1892' --arch arm64
+```
+
+**2. Соберите контроллер и пакеты.** Укажите в `version` значение `24.10.8` или `25.12.6`. Сценарий проверит архивы, соберёт инструмент переводов соответствующей версии LuCI и сохранит SDK для повторных сборок. Для APK он создаст или использует существующую пару ключей в каталоге SDK. Сохраните закрытый ключ для подписи следующих обновлений.
+
+```sh
+set -e
+version=25.12.6
+sdk=$(sh tools/prepare_filogic_sdk.sh "$version")
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags=luci_only -trimpath \
+  -ldflags='-s -w' -o build/openwrt-controller-arm64 ./cmd/panel
+sh tools/build_openwrt.sh "$sdk" "build/candidate-filogic-$version"
+ls "build/candidate-filogic-$version"
+```
+
+Если у вас уже подготовлен SDK для AArch64, передайте его абсолютный путь в `tools/build_openwrt.sh`. Упаковщик проверяет SHA-256 движка и метку сборки контроллера. После сборки обеих версий команда `pwsh -File tools/bundle-routerich.ps1` создаст два ZIP с инструкциями и контрольными суммами. Для неё нужен PowerShell 7.2+.
+
+## Установка и подключение
+
+Скопируйте оба пакета своей версии в отдельный каталог на роутере. Для 25.12.6 туда же скопируйте открытый ключ `sota-lab.pem`. Из этого каталога выполните команду для своей прошивки.
+
+| OpenWrt | Установка |
+| --- | --- |
+| 24.10.8 | `opkg update && opkg install ./sota-gateway_*.ipk ./luci-app-sota_*.ipk` |
+| 25.12.6 | `cp sota-lab.pem /etc/apk/keys/ && apk update && apk verify ./*.apk && apk add ./*.apk` |
+
+Включите автозапуск службы, запустите её, перечитайте firewall и перезапустите rpcd. В **Сервисы → Sota Gateway** введите ключ подписки, выберите LAN-интерфейс (обычно `br-lan`), сервер и протокол. Перед включением правил отключите программную и аппаратную разгрузку потоков на роутере. Нажмите **Старт**, затем **Проверить IP**.
+
+```sh
+/etc/init.d/sota enable && /etc/init.d/sota start &&
+/etc/init.d/firewall reload && /etc/init.d/rpcd restart
+```
+
+## Разработка и тесты
+
+```sh
+go test ./cmd/... ./internal/...
+go test -tags=luci_only ./cmd/... ./internal/...
+# Дополнительные бинарники для Linux-стенда, для архитектуры машины сборки
+mkdir -p build
+go build -o build/panel ./cmd/panel
+go build -o build/gateway ./cmd/gateway
+```
+
+| Каталог | Содержимое |
+| --- | --- |
+| `cmd/panel/`, `cmd/panel/web/`, `cmd/panel/presets/` | Контроллер, отдельная веб-панель, общий редактор правил, переводы и встроенные списки |
+| `cmd/gateway/`, `internal/`, `deploy/linux/` | Linux-шлюз, IPC, обработка профиля и службы systemd |
+| `openwrt/` | Рецепты пакетов, страницы LuCI, настройки UCI, доступ rpcd, служба procd и правила nftables |
+| `tools/`, `research/` | Сборка, регресс, описание совместимости ядра и результаты лабораторных проверок |
+
+Сквозной регресс проходил на виртуальном OpenWrt ARM64 с отдельным LAN-клиентом. Готовые пакеты также установлены в файловые системы официальных образов Routerich обеих версий. Испытание на физическом Routerich ещё предстоит. [Отчёт о регрессе](openwrt/REGRESSION.md) · [Инструкция для Routerich](openwrt/ROUTERICH.md) · [Linux-стенд](docs/linux-lab.ru.md)

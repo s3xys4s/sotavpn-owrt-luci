@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sota Gateway</title><link rel="stylesheet" href="/app.css"><script type="module" src="/app.js"></script></head>
+<body><header><div class="top"><a class="brand" href="/"><i aria-hidden="true"></i>Sota Gateway</a><div class="top-controls"><label id="runtime-label" hidden><span data-i18n>Шлюз</span> <select id="runtime"><option value="openwrt">OpenWrt</option><option value="linux" data-i18n>Linux-стенд</option></select></label><div class="languages" role="group" aria-label="Язык интерфейса" data-i18n-label><button type="button" lang="ru" data-language="ru" aria-label="Русский" title="Русский" aria-pressed="true"><i class="flag flag-ru" aria-hidden="true"></i>RU</button><button type="button" lang="en" data-language="en" aria-label="English" title="English" aria-pressed="false"><i class="flag flag-gb" aria-hidden="true"></i>EN</button></div></div></div></header>
+<main><div class="heading"><div><p class="eyebrow" data-i18n>Управление сетью</p><h1 data-i18n>VPN-шлюз</h1></div><button id="account" class="secondary" data-i18n>Настроить доступ</button></div>
+<div class="sota-service-actions" role="group" aria-label="Управление туннелем" data-i18n-label><button id="connect" class="sota-start" disabled data-i18n>Старт</button><button id="disconnect" class="sota-stop" disabled data-i18n>Стоп</button><button id="restart" class="sota-restart" disabled data-i18n>Перезапуск</button></div>
+<nav class="page-nav" id="page-nav" aria-label="Разделы панели" data-i18n-label hidden>
+<a href="#status" data-page="status" data-i18n>Подключение</a>
+<a href="#network" data-page="network" data-i18n>Сеть и DNS</a>
+<a href="#lists" data-page="lists" data-i18n>Списки маршрутизации</a>
+<a href="#exceptions" data-page="exceptions" data-i18n>Исключения</a>
+</nav>
+<div id="notice" role="status" hidden></div>
+<div id="status-page">
+<div class="cards"><section class="card"><div class="card-head"><h2 data-i18n>Подключение</h2><span id="core" class="pill" data-i18n>Проверка ядра…</span></div>
+<p id="connection" class="large" data-i18n>Получаем состояние…</p>
+<div class="fields"><label for="server" data-i18n>Сервер Sota</label><div class="row"><select id="server"><option value="" data-i18n>Выберите сервер</option></select><button id="refresh" class="secondary" title="Загрузить серверы" data-i18n-title data-i18n>Обновить</button></div></div>
+<div class="fields"><label for="protocol" data-i18n>Протокол</label><select id="protocol"><option value="auto" data-i18n>Авто</option><option value="vless">VLESS</option><option value="hysteria2">Hysteria2</option><option data-import value="vmess">VMess</option><option data-import value="trojan">Trojan</option><option data-import value="shadowsocks">Shadowsocks</option><option data-import value="tuic">TUIC</option></select></div>
+<div class="fields"><label for="hwid" data-i18n>HWID устройства</label><input id="hwid" type="text" dir="ltr" disabled></div>
+</section>
+<section class="card diag"><div class="card-head"><h2 data-i18n>Проверка IP</h2><span class="pill">IPv4 · HTTPS</span></div>
+<dl><div><dt data-i18n>Прямой выход WAN</dt><dd id="wan">—</dd></div><div><dt data-i18n>Через TUN</dt><dd id="tunnel">—</dd></div></dl>
+<p id="measure" class="muted" aria-live="polite" data-i18n>Запрос через TUN выполняет отдельный клиент.</p>
+<button id="checkip" class="primary" data-i18n>Проверить IP</button></section></div>
+<section class="card lower"><div class="card-head"><h2 data-i18n>Последние события</h2><div class="row"><select id="level" aria-label="Уровень событий" data-i18n-label><option value="" data-i18n>Все уровни</option><option value="info" data-i18n>Сведения</option><option value="warn" data-i18n>Предупреждение</option><option value="error" data-i18n>Ошибка</option></select><label class="pause"><input id="pause" type="checkbox"> <span data-i18n>Пауза</span></label></div></div><div id="events" role="log"></div></section>
+</div>
+<section class="card" id="network-card" aria-labelledby="routing-title" hidden>
+<h2 id="routing-title"></h2><div id="network-editor"></div>
+</section>
+</main>
+<dialog id="access"><form method="dialog"><div class="card-head"><h2 data-i18n>Доступ к Sota</h2><button type="button" id="close" class="secondary" data-i18n>Закрыть</button></div>
+<label for="key" data-i18n>Ключ подписки</label><input type="password" id="key" autocomplete="off" spellcheck="false" placeholder="Введите ключ Sota" data-i18n-placeholder><p class="muted" id="key-info" data-i18n>Для подписки используется постоянный идентификатор устройства.</p>
+<button type="button" id="login" class="primary" data-i18n>Проверить ключ и получить серверы</button>
+<details><summary data-i18n>Импорт готового профиля</summary><label for="file" data-i18n>JSON-файл с конфигурацией провайдера</label><input id="file" type="file" accept=".json,application/json"><button type="button" id="import" class="secondary" data-i18n>Сохранить профиль</button></details>
+<p id="modal-msg" role="status"></p></form></dialog>
+</body></html>

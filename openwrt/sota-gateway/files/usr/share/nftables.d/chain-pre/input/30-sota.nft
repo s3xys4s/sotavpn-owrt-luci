@@ -1,0 +1,1 @@
+meta mark 0x534f meta l4proto { tcp, udp } th dport 1053 accept

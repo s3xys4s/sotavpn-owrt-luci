@@ -1,0 +1,16 @@
+msgid ""
+msgstr ""
+"Language: ru\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "VPN connection"
+msgstr "Подключение"
+
+msgid "Network and DNS"
+msgstr "Сеть и DNS"
+
+msgid "Routing lists"
+msgstr "Списки маршрутизации"
+
+msgid "Exceptions"
+msgstr "Исключения"

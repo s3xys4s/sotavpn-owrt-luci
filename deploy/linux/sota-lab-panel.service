@@ -1,0 +1,23 @@
+[Unit]
+Description=Sota Gateway HTTP control panel
+After=sota-lab-runtime.service network-online.target
+Wants=sota-lab-runtime.service network-online.target
+
+[Service]
+User=sota-panel
+Group=sota-panel
+StateDirectory=sota-panel
+StateDirectoryMode=0700
+UMask=0077
+EnvironmentFile=/etc/sota-panel/service.env
+ExecStart=/opt/sota-lab/current/panel
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

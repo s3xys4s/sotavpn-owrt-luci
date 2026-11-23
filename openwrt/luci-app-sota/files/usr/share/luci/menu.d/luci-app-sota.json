@@ -1,0 +1,46 @@
+{
+  "admin/services/sota": {
+    "title": "Sota Gateway",
+    "order": 50,
+    "action": {
+      "type": "firstchild"
+    },
+    "depends": {
+      "acl": [
+        "luci-app-sota"
+      ]
+    }
+  },
+  "admin/services/sota/status": {
+    "title": "VPN connection",
+    "order": 10,
+    "action": {
+      "type": "view",
+      "path": "sota/status"
+    }
+  },
+  "admin/services/sota/network": {
+    "title": "Network and DNS",
+    "order": 20,
+    "action": {
+      "type": "view",
+      "path": "sota/network"
+    }
+  },
+  "admin/services/sota/lists": {
+    "title": "Routing lists",
+    "order": 30,
+    "action": {
+      "type": "view",
+      "path": "sota/lists"
+    }
+  },
+  "admin/services/sota/exceptions": {
+    "title": "Exceptions",
+    "order": 40,
+    "action": {
+      "type": "view",
+      "path": "sota/exceptions"
+    }
+  }
+}

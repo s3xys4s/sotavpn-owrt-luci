@@ -1,0 +1,41 @@
+{
+  "adapter_version": "kittend-ipc-1",
+  "architecture": "arm64",
+  "base_files": {
+    "etc/ssl/certs/ca-certificates.crt": "6d84ab71cb726c0641b0af84303c316e3fa50db941dc8507d09045eb2fa5d238",
+    "lib/aarch64-linux-gnu/libbsd.so.0": "3d37bad538e9149f8fd60d6b215d94f10b208cc3a7958ec766aec5fba9266200",
+    "lib/aarch64-linux-gnu/libc.so.6": "0740600899deec69af5e1a2110a9007ffd6af83dfe17b25d87fd3a48ae335dd0",
+    "lib/aarch64-linux-gnu/libedit.so.2": "75eadb6987cba7386d6b3c41e29155aea0a94f35bc5b01293b8bdaabbe3b81f8",
+    "lib/aarch64-linux-gnu/libgmp.so.10": "00f2c07fa3d2cea34ad9ad77ed5d203d247b3dae231874a67341264d6553a789",
+    "lib/aarch64-linux-gnu/libjansson.so.4": "ec0e6c38dd7f4979d61563777872de4c9983b0cfb15bbba9b0d9d90e4d736907",
+    "lib/aarch64-linux-gnu/libmd.so.0": "d0d295bf8c75814a0a45a39690e2505c170824af00aa065fee8c3eb935c1dc86",
+    "lib/aarch64-linux-gnu/libmnl.so.0": "1dae1fd6e48b655c397e63a9eb54f31fd882d944c67749477cf5804be583af23",
+    "lib/aarch64-linux-gnu/libnftables.so.1": "e53c0323be34d36b071b0f2b92e5f6c25cc47faa597257b1da2cc2246c57f61b",
+    "lib/aarch64-linux-gnu/libnftnl.so.11": "946fe5883e5aa60711f317fd37d8cf1248252a47c87ec7c6fbdf8a2f8633d7a4",
+    "lib/aarch64-linux-gnu/libtinfo.so.6": "7bbaee1535d845b4baf8323e75f25cb58d3bcab18bd1bc5b231932a17bc029e8",
+    "lib/aarch64-linux-gnu/libxtables.so.12": "1d0171c83beadfa938452488ad09aa657dc2f3210c786e1e236775c109116011",
+    "lib/ld-linux-aarch64.so.1": "7e1f26ba5a3b84dbf6fbfac1e318a7b0320eb1214f0e409905f207f1c9a2616b",
+    "usr/sbin/nft": "532c879d7580cfb8658202796484704575efc78a6ac5f33a3c965aa823ee73a9"
+  },
+  "base_image_digest": "sha256:956429dbc2ad5ff8e10c2036772c37f86c7058fb4f55eefd63c9888e2a55f64c",
+  "bundle": [
+    {
+      "bytes": 34799800,
+      "path": "kittend",
+      "sha256": "bde34f88ab454f2f8d7ee2c24dba2eff94da4371969d05f5c0b45faf3f824af8",
+      "source_path": "usr/libexec/sota-connect/kittend"
+    }
+  ],
+  "contract_sha256": "159e769863a5ffe9d171ac925b6080a0b985adfb8476590f1dbd4f7cdc6aea99",
+  "dynamic_compatibility": "untested",
+  "image_digest": "sha256:1150396a551fc8e3a6b3781d296f6315e10de625f49c742be53e4f9c62783088",
+  "package_bytes": 39694758,
+  "package_sha256": "44ec209c690ed718879486341529dd89e01b3783790b306c2b5cfe7681ecedbd",
+  "package_url": "https://sotacdn.com/releases/sota-connect/latest/sota-connect-linux-arm64.deb",
+  "package_version": "1.8.11+1892",
+  "provider_test": "unverified",
+  "stage": "lab-candidate",
+  "wrapper_commit": null,
+  "wrapper_sha256": "c4152780456404c5482d448979f7265b59dfe2ad7859e9726c6982cc1b4f3a0c",
+  "wrapper_source_sha256": "a55c7a24cd9d61c26b790cb9c2833ea051578ac0e1b4075c683d7553b6d401e1"
+}

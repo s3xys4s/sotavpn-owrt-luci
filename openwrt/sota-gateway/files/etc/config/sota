@@ -1,0 +1,4 @@
+config gateway 'main'
+	option enabled '0'
+	option protected_device 'br-lan'
+	option dns '1.1.1.1'

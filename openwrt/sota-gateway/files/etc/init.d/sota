@@ -1,0 +1,125 @@
+#!/bin/sh /etc/rc.common
+START=18
+STOP=89
+USE_PROCD=1
+
+start_domain_resolver() {
+	local instance="$1" listen="$2" upstream="$3" rules="$4"
+	local conf="/var/run/sota/$instance.conf"
+	cat > "$conf.tmp" <<EOF
+bind $listen
+bind-tcp $listen
+server 127.0.0.1:$upstream
+resolv-file /dev/null
+speed-check-mode none
+dualstack-ip-selection no
+cache-size 0
+cache-persist no
+serve-expired no
+rr-ttl-min 0
+rr-ttl-max 300
+nftset-timeout yes
+log-console yes
+log-level warn
+EOF
+	cat "$rules" >> "$conf.tmp"
+	mv "$conf.tmp" "$conf"
+	procd_open_instance "$instance"
+	procd_set_param command /usr/sbin/smartdns -f -c "$conf" -p -
+	procd_set_param file "$conf"
+	procd_set_param stderr 1
+	procd_set_param respawn 120 3 0
+	procd_close_instance
+}
+
+start_doh_resolver() {
+	local url="$1" bootstrap="$2" conf=/var/run/sota/doh.conf host
+	[ -s /etc/ssl/certs/ca-certificates.crt ] || return 1
+	host=${url#https://}; host=${host%%/*}; host=${host%%:*}
+	cat > "$conf.tmp" <<EOF
+bind 127.0.0.1:1056
+bind-tcp 127.0.0.1:1056
+resolv-file /dev/null
+ca-file /etc/ssl/certs/ca-certificates.crt
+server $bootstrap -bootstrap-dns -exclude-default-group -set-mark 21327
+server-https $url -tls-host-verify $host -set-mark 21327
+speed-check-mode none
+dualstack-ip-selection no
+cache-size 0
+cache-persist no
+log-console yes
+log-level warn
+EOF
+	mv "$conf.tmp" "$conf"
+	procd_open_instance doh
+	procd_set_param command /usr/sbin/smartdns -f -c "$conf" -p -
+	procd_set_param file "$conf"
+	procd_set_param stderr 1
+	procd_set_param respawn 120 3 0
+	procd_close_instance
+}
+
+start_service() {
+	umask 077
+	mkdir -p /etc/sota /var/run/sota/core
+	rm -f /var/run/sota/stopping
+	chmod 0700 /etc/sota /var/run/sota /var/run/sota/core
+	/usr/libexec/sota/controller -install-route-defaults || return 1
+	/usr/libexec/sota-policy apply || return 1
+	procd_open_instance core
+	procd_set_param command /usr/libexec/sota/kittend --endpoint /var/run/sota/core.sock --state-dir /var/run/sota/core
+	procd_set_param respawn 5 2 0
+	procd_close_instance
+	procd_open_instance control
+	procd_set_param command /usr/libexec/sota/controller -router -state /etc/sota
+	procd_set_param env SOTA_LOCAL_RPC="$(uci -q get sota.main.local_rpc || echo 0)"
+	procd_set_param stderr 1
+	procd_set_param respawn 120 3 0
+	procd_close_instance
+	if [ "$(uci -q get sota.main.enabled)" = 1 ]; then
+		local dns dev domain doh
+		dns=$(uci -q get sota.main.dns)
+		dev=$(uci -q get sota.main.protected_device)
+		domain=$(uci -q get 'dhcp.@dnsmasq[0].domain') || domain=lan
+		doh=$(uci -q get sota.main.doh_url) || doh=''
+		if [ -n "$doh" ]; then
+			start_doh_resolver "$doh" "$dns" || return 1
+			dns=127.0.0.1#1056
+		fi
+		procd_open_instance dns
+		procd_set_param command /usr/sbin/dnsmasq --keep-in-foreground --conf-file=/dev/null --no-resolv --no-poll "--server=$dns" "--server=/$domain/127.0.0.1#53" --pid-file=
+		# Keep each port with the same daemon across asynchronous procd reloads.
+		procd_append_param command --port=1054 --bind-interfaces --listen-address=127.0.0.1
+		procd_set_param user nobody
+		procd_set_param respawn 120 3 0
+		procd_close_instance
+		if [ -s /var/run/sota/list.dns ] && [ -s /var/run/sota/bypass.dns ]; then
+			start_domain_resolver exceptions 127.0.0.1:1055 1054 /var/run/sota/bypass.dns
+			start_domain_resolver domains "0.0.0.0:1053@$dev" 1055 /var/run/sota/list.dns
+		elif [ -s /var/run/sota/bypass.dns ]; then
+			start_domain_resolver domains "0.0.0.0:1053@$dev" 1054 /var/run/sota/bypass.dns
+		else
+			start_domain_resolver domains "0.0.0.0:1053@$dev" 1054 /var/run/sota/list.dns
+		fi
+	fi
+}
+
+reload_service() {
+	[ ! -e /var/run/sota/stopping ] && start
+}
+
+stop_service() {
+	mkdir -p /var/run/sota
+	touch /var/run/sota/stopping
+	if [ -S /var/run/sota/rpc.sock ]; then
+		/usr/libexec/sota/controller -call service.suspend </dev/null >/dev/null
+	fi
+}
+
+service_stopped() {
+	/usr/libexec/sota-policy clear
+}
+
+service_triggers() {
+	procd_add_reload_trigger sota
+}

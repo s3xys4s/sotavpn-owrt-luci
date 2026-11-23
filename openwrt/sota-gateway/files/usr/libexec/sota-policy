@@ -1,0 +1,120 @@
+#!/bin/sh
+# Reserve mark 0x534f and table 21519 for protected IPv4 traffic.
+set -eu
+table=21519
+mark=0x534f
+dns_rule() {
+	ip -4 rule "$1" pref 78 uidrange 65534-65534 to "$2" ipproto "$3" dport 53 table "$table"
+}
+old_dns=$(cat /var/run/sota/policy-dns 2>/dev/null || :)
+check() {
+	[ "$(uci -q get sota.main.enabled)" = 1 ] &&
+	nft list chain inet sota_guard forward >/dev/null &&
+	ip -4 route show table "$table" | grep -q '^blackhole default' &&
+	ip -4 rule show | grep -q '^8999:.*lookup main$' &&
+	ip -4 rule show | grep -q "fwmark $mark lookup $table"
+}
+case "${1:-}" in
+	check) check; exit;;
+	route) check && ip -4 route replace default dev sota0 metric 10 table "$table"; exit;;
+	apply|clear) ;;
+	*) exit 2;;
+esac
+if [ "$1" = clear ] || [ "$(uci -q get sota.main.enabled)" != 1 ]; then
+	[ -e /var/run/sota/policy-owned ] || nft list table inet sota_guard >/dev/null 2>&1 || exit 0
+	nft list table inet sota_guard >/dev/null 2>&1 && nft delete table inet sota_guard
+	for proto in tcp udp; do [ -z "$old_dns" ] || dns_rule del "$old_dns" "$proto" 2>/dev/null || :; done
+	ip -4 rule del pref 79 fwmark "$mark" table "$table" 2>/dev/null || :
+	ip -4 rule del pref 8999 table main 2>/dev/null || :
+	ip -4 route flush table "$table" 2>/dev/null || :
+	rm -f /var/run/sota/policy-owned /var/run/sota/policy-dns /var/run/sota/domain-hash
+	exit 0
+fi
+if [ "$(uci -q get 'firewall.@defaults[0].flow_offloading' || :)" = 1 ]; then
+	logger -t sota 'Disable flow offloading before enabling the protected network'; exit 1
+fi
+dev=$(uci -q get sota.main.protected_device)
+dns=$(uci -q get sota.main.dns)
+case "$dev" in ''|*[!a-zA-Z0-9._-]*|lo|sota0) exit 2;; esac
+case "$dns" in ''|*[!0-9.]*) exit 2;; esac
+elements() {
+	local item result=''
+	for item in $1; do
+		case "$item" in *[!0-9./]*) exit 2;; esac
+		result="${result:+$result, }$item"
+	done
+	printf '%s' "$result"
+}
+clients=$(elements "$(uci -q get sota.main.clients || :)")
+bypass=$(elements "$(uci -q get sota.main.bypass || :)")
+/usr/libexec/sota/controller -compile-routes
+direction=$(uci -q get sota.main.list_direction || echo wan)
+case "$direction" in
+ wan) list_action=return; default_action="meta mark set $mark";;
+ vpn) list_action="meta mark set $mark return"; default_action=return;;
+ *) exit 2;;
+esac
+fingerprint=$(sha256sum /var/run/sota/list.dns /var/run/sota/bypass.dns | sha256sum | cut -d' ' -f1)
+reset_domains=''
+[ "$(cat /var/run/sota/domain-hash 2>/dev/null || :)" = "$fingerprint" ] || reset_domains='flush set inet sota_guard resolved
+flush set inet sota_guard bypass_resolved'
+bypass_rule=''
+[ -z "$bypass" ] || bypass_rule="elements = { $bypass };"
+rules=$(mktemp); trap 'rm -f "$rules"' EXIT
+cat > "$rules" <<EOF
+add table inet sota_guard
+flush table inet sota_guard
+add set inet sota_guard clients { type ipv4_addr; flags interval; auto-merge; }
+add set inet sota_guard bypass { type ipv4_addr; flags interval; auto-merge; }
+add set inet sota_guard listed { type ipv4_addr; flags interval; auto-merge; }
+add set inet sota_guard resolved { type ipv4_addr; flags timeout; timeout 1h; }
+add set inet sota_guard bypass_resolved { type ipv4_addr; flags timeout; timeout 1h; }
+flush set inet sota_guard clients
+flush set inet sota_guard bypass
+flush set inet sota_guard listed
+$reset_domains
+table inet sota_guard {
+ set clients { type ipv4_addr; flags interval; auto-merge; elements = { ${clients:-0.0.0.0/0} } }
+ set bypass { type ipv4_addr; flags interval; auto-merge; $bypass_rule }
+ chain classify { type filter hook prerouting priority -155; policy accept;
+   iifname "$dev" ip saddr @clients meta l4proto { udp,tcp } th dport 53 meta mark set $mark return
+   iifname "$dev" ip saddr @clients ip daddr @bypass return
+   iifname "$dev" ip saddr @clients ip daddr @bypass_resolved return
+   iifname "$dev" ip saddr @clients ip daddr @listed $list_action
+   iifname "$dev" ip saddr @clients ip daddr @resolved $list_action
+   iifname "$dev" ip saddr @clients $default_action
+ }
+ chain dns_redirect { type nat hook prerouting priority -101; policy accept;
+   meta mark $mark meta l4proto { udp,tcp } th dport 53 redirect to :1053
+ }
+ chain dns_route { type route hook output priority -152; policy accept;
+   meta skuid 65534 ip daddr $dns meta l4proto { udp,tcp } th dport 53 meta mark set $mark
+ }
+ chain output { type filter hook output priority -10; policy accept;
+   meta mark $mark oifname != "sota0" drop
+ }
+ chain input { type filter hook input priority -10; policy accept;
+   iifname "$dev" meta nfproto ipv6 meta l4proto { tcp,udp } th dport 53 drop
+ }
+ chain forward { type filter hook forward priority -10; policy accept;
+   iifname "$dev" meta nfproto ipv6 drop
+   meta mark $mark oifname != "sota0" drop
+ }
+}
+EOF
+cat /var/run/sota/list.nft >> "$rules"
+nft -c -f "$rules"
+touch /var/run/sota/policy-owned
+nft -f "$rules"
+printf '%s\n' "$fingerprint" > /var/run/sota/domain-hash
+ip -4 route replace blackhole default metric 32000 table "$table"
+for proto in tcp udp; do
+	ip -4 rule show | grep -F "to $dns uidrange 65534-65534 ipproto $proto dport 53 lookup $table" | grep -q '^78:' || dns_rule add "$dns" "$proto"
+	if [ -n "$old_dns" ] && [ "$old_dns" != "$dns" ]; then dns_rule del "$old_dns" "$proto" 2>/dev/null || :; fi
+done
+printf '%s\n' "$dns" > /var/run/sota/policy-dns
+ip -4 rule show | grep -q "fwmark $mark lookup $table" || ip -4 rule add pref 79 fwmark "$mark" table "$table"
+# Unmarked flows and return packets use the normal uplink and LAN routes
+# before the upstream core's automatic TUN rules (starting at 9000).
+ip -4 rule show | grep -q '^8999:.*lookup main$' || ip -4 rule add pref 8999 table main
+if ip link show sota0 >/dev/null 2>&1; then ip -4 route replace default dev sota0 metric 10 table "$table"; fi

@@ -1,0 +1,7 @@
+{
+  "luci-app-sota": {
+    "description":"Sota Gateway",
+    "read":{"ubus":{"sota":["status","logs","diagnostics","servers","network","readpart"]}},
+    "write":{"ubus":{"sota":["key","connect","disconnect","restart","apply","writepart"]}}
+  }
+}

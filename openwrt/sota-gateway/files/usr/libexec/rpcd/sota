@@ -1,0 +1,27 @@
+#!/bin/sh
+case "$1" in
+	list) echo '{"status":{},"servers":{},"key":{"key":""},"connect":{"id":0,"protocol":""},"restart":{"id":0,"protocol":""},"disconnect":{},"diagnostics":{},"logs":{},"network":{},"apply":{"network":{}},"readpart":{"revision":"","offset":0},"writepart":{"transfer":"","offset":0,"chunk":"","final":true}}';;
+	call)
+		case "$2" in
+			status|logs) method=$2;;
+			network) method=network.get;;
+			apply) method=network.set;;
+			readpart|writepart) method=network.$2;;
+			servers) method=server.list;;
+			key) method=account.setKey;;
+			connect|restart)
+				method=tunnel.$2
+				if ! /etc/init.d/sota running >/dev/null 2>&1; then
+					/etc/init.d/sota start </dev/null >/dev/null
+					i=0
+					until [ "$(/usr/libexec/sota/controller -call status </dev/null 2>/dev/null | jsonfilter -e '@.data.core.core_responding' 2>/dev/null)" = true ]; do
+						i=$((i+1)); [ "$i" -lt 15 ] || break; sleep 1
+					done
+				fi;;
+			disconnect) method=tunnel.disconnect;;
+			diagnostics) method=diagnostics.ip;;
+			*) exit 2;;
+		esac
+		exec /usr/libexec/sota/controller -call "$method";;
+	*) exit 2;;
+esac

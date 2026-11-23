@@ -1,0 +1,12 @@
+[Unit]
+Description=LuCI on the test LAN
+After=network-online.target
+Wants=network-online.target
+[Socket]
+ListenStream=192.168.1.88:8081
+BindToDevice=end1
+FreeBind=true
+IPAddressDeny=any
+IPAddressAllow=192.168.1.0/24
+[Install]
+WantedBy=sockets.target

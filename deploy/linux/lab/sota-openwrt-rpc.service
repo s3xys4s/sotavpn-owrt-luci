@@ -1,0 +1,13 @@
+[Unit]
+Description=Loopback RPC forward to the OpenWrt lab guest
+After=network-online.target
+[Service]
+ExecStart=/usr/bin/ssh -NT -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/var/lib/sota-wrt-lab/known_hosts -i /var/lib/sota-wrt-lab/lab_ed25519 -p 22240 -L 127.0.0.1:18082:127.0.0.1:18082 root@127.0.0.1
+Restart=always
+RestartSec=3
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectSystem=strict
+PrivateTmp=yes
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,2 @@
+meta mark 0x534f oifname "sota0" meta nfproto ipv4 accept
+iifname "sota0" ct state established,related accept

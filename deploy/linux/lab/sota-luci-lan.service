@@ -1,0 +1,9 @@
+[Unit]
+Description=Forward local LuCI traffic to the OpenWrt guest
+[Service]
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd 127.0.0.1:18081
+DynamicUser=true
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
