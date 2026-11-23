@@ -1,0 +1,7 @@
+{
+  "name": "sota-ui-regression",
+  "private": true,
+  "devDependencies": {
+    "playwright-core": "1.65.1"
+  }
+}

@@ -64,6 +64,8 @@ For a fork, set the repository Actions secret `SOTA_APK_SIGNING_KEY` to the PEM 
 
 Pull requests and pushes to `master` also run regression tests. Two native ARM64 jobs install the built IPKs/APKs into clean Routerich OpenWrt filesystems. They exercise LuCI and rpcd, real LAN packet classification and CIDR exceptions, domain and wildcard DNS rules, authenticated DoH, tunnel traffic and core failure using local fixtures. Both jobs must pass before tag publication. A pull request uses a temporary APK key. The live subscription and full VM reboot checks are documented in [the lab regression report](openwrt/REGRESSION.md).
 
+A Chrome test opens the compiled standalone panel at mobile width with fixture RPC responses. It exercises both languages, Start/Stop/Restart, transport selection, IP diagnostics, log filtering, DoH, routing exceptions, and uploading a TXT file across multiple RPC chunks.
+
 ## Install and use
 
 Copy both packages for the matching release into a dedicated directory on the router. For 25.12.6 also copy the public `sota-lab.pem`. From that directory run the commands for your release.

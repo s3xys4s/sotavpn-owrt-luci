@@ -21,3 +21,4 @@ sota-probe-data/
 settings.json
 *.profile
 service.env
+node_modules/

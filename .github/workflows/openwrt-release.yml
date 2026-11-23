@@ -33,6 +33,18 @@ jobs:
           go test ./cmd/... ./internal/...
           go test -tags=luci_only ./cmd/... ./internal/...
 
+      - name: Exercise the embedded web panel in Chrome
+        run: |
+          npm ci --prefix tools/ci --ignore-scripts --no-audit --no-fund
+          go build -o "$RUNNER_TEMP/panel" ./cmd/panel
+          mkdir -m 700 "$RUNNER_TEMP/panel-state"
+          SOTA_API_ENABLED=true SOTA_WEB_ENABLED=true SOTA_OPENWRT_BRIDGE=1 SOTA_HTTP_LISTEN=127.0.0.1:18080 \
+            "$RUNNER_TEMP/panel" -state "$RUNNER_TEMP/panel-state" &
+          panel=$!
+          trap 'kill "$panel" 2>/dev/null || :' EXIT
+          curl -fsS --retry 10 --retry-connrefused http://127.0.0.1:18080/backends
+          node tools/ci/test-panel-ui.mjs http://127.0.0.1:18080/
+
       - name: Install SDK host tools
         run: |
           sudo apt-get update -qq
