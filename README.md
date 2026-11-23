@@ -49,6 +49,19 @@ ls "build/candidate-filogic-$version"
 
 For an already prepared AArch64 SDK, pass its absolute path to `tools/build_openwrt.sh`. The packaging script checks the engine SHA-256 and the controller build tag. To produce both Routerich ZIPs with install notes and SHA-256 manifests after building both versions, run `pwsh -File tools/bundle-routerich.ps1` (PowerShell 7.2+).
 
+## GitHub releases
+
+Push a Git tag on the commit you want to release, from any branch. The example below tags the current commit.
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+GitHub Actions runs the Go tests, builds both OpenWrt targets and publishes the IPKs, signed APKs, public key, two Routerich install ZIPs and `SHA256SUMS` on the tag's GitHub Release. Package versions come from the two OpenWrt Makefiles. Bump the relevant `PKG_RELEASE` when shipping changed package contents so the router can recognize an upgrade.
+
+For a fork, set the repository Actions secret `SOTA_APK_SIGNING_KEY` to the PEM private key used for APK releases. Keep using the same key for updates. To test a build before tagging, select **Actions → OpenWrt packages → Run workflow**. The manual run produces downloadable build artifacts.
+
 ## Install and use
 
 Copy both packages for the matching release into a dedicated directory on the router. For 25.12.6 also copy the public `sota-lab.pem`. From that directory run the commands for your release.

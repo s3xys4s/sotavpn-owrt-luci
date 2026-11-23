@@ -20,8 +20,8 @@ cd /tmp/sota
 sha256sum -c SHA256SUMS &&
 cp sota-lab.pem /etc/apk/keys/sota-lab.pem &&
 apk update &&
-apk verify ./sota-gateway-0.1.0-r19.apk ./luci-app-sota-0.1.0-r15.apk &&
-apk add ./sota-gateway-0.1.0-r19.apk ./luci-app-sota-0.1.0-r15.apk
+apk verify ./sota-gateway-*.apk ./luci-app-sota-*.apk &&
+apk add ./sota-gateway-*.apk ./luci-app-sota-*.apk
 ```
 
 **OpenWrt 24.10**
@@ -30,7 +30,7 @@ apk add ./sota-gateway-0.1.0-r19.apk ./luci-app-sota-0.1.0-r15.apk
 cd /tmp/sota
 sha256sum -c SHA256SUMS &&
 opkg update &&
-opkg install ./sota-gateway_0.1.0-r19_aarch64_cortex-a53.ipk ./luci-app-sota_0.1.0-r15_all.ipk
+opkg install ./sota-gateway_*_aarch64_cortex-a53.ipk ./luci-app-sota_*_all.ipk
 ```
 
 После успешной установки для обеих версий выполните
